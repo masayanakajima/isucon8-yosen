@@ -85,7 +85,7 @@ Vagrant.configure("2") do |config|
 
       GITDIR="/tmp/torb"
       rm -rf ${GITDIR}
-      git clone https://github.com/isucon/isucon8-qualify.git ${GITDIR}
+      git clone -b new_master https://github.com/masayanakajima/isucon-setup.git ${GITDIR}
       sed -i '/^BUNDLED WITH/,$d' ${GITDIR}/webapp/ruby/Gemfile.lock
       (
         cd ${GITDIR}/provisioning
@@ -99,7 +99,30 @@ EOF
     SHELL
   end
 
+  config.vm.define "db" do |db|
+    db.vm.provision "shell", inline: <<-SHELL
+      set -e
+      yum update -y
+      yum install -y ansible git
+
+      GITDIR="/tmp/torb"
+      rm -rf ${GITDIR}
+      git clone -b new_master https://github.com/masayanakajima/isucon-setup.git ${GITDIR}
+      sed -i '/^BUNDLED WITH/,$d' ${GITDIR}/webapp/ruby/Gemfile.lock
+      (
+        cd ${GITDIR}/provisioning
+        cat >local <<EOF
+[db]
+localhost ansible_connection=local
+EOF
+        PYTHONUNBUFFERED=1 ANSIBLE_FORCE_COLOR=true ansible-playbook -i local db.yml
+      )
+      rm -rf ${GITDIR}      
+    SHELL
+  end
+
   config.vm.define "bench" do |bench|
+    bench.vm.network "forwarded_port", guest: 22, host: 2223
     bench.vm.provision "shell", inline: <<-SHELL
       set -e
       yum update -y
@@ -107,7 +130,7 @@ EOF
 
       GITDIR="/tmp/torb"
       rm -rf ${GITDIR}
-      git clone https://github.com/isucon/isucon8-qualify.git ${GITDIR}
+      git clone -b new_master https://github.com/masayanakajima/isucon-setup.git ${GITDIR}
       sed -i '/^BUNDLED WITH/,$d' ${GITDIR}/webapp/ruby/Gemfile.lock
       (
         cd ${GITDIR}/provisioning
