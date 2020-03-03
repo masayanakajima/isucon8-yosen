@@ -39,3 +39,7 @@ CREATE TABLE IF NOT EXISTS administrators (
     pass_hash   VARCHAR(128) NOT NULL,
     UNIQUE KEY login_name_uniq (login_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+alter table reservations add index rsv_id_idx(id);
+alter table events add index events_id_idx(id);
+alter table sheets add index sheets_id_idx(id);

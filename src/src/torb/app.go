@@ -952,5 +952,3 @@ func resError(c echo.Context, e string, status int) error {
 	}
 	return c.JSON(status, map[string]string{"error": e})
 }
-
-
