@@ -316,7 +316,6 @@ func main() {
 		os.Getenv("DB_DATABASE"),
 	)
 
-
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
