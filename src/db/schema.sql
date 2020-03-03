@@ -40,6 +40,4 @@ CREATE TABLE IF NOT EXISTS administrators (
     UNIQUE KEY login_name_uniq (login_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-alter table reservations add index rsv_id_idx(id);
-alter table events add index events_id_idx(id);
-alter table sheets add index sheets_id_idx(id);
+alter table reservations add index user_id_idx(user_id);
