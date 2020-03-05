@@ -232,7 +232,38 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 		"B": &Sheets{},
 		"C": &Sheets{},
 	}
+	
+	rows, err := db.Query("select ifnull(r.id,0) as id, ifnull(r.user_id,0) as user_id, r.reserved_at, s.id, s.rank, s.num, s.price from reservations r right outer join sheets s on r.sheet_id = s.id and r.event_id = ? and r.canceled_at is null order by s.rank,s.num", event.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
+	for rows.Next(){
+		var sheet Sheet
+		var reservation Reservation
+		err := rows.Scan(&reservation.ID, &reservation.UserID, &reservation.ReservedAt, &sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price)
+		
+		if err != nil {
+			return nil, err
+		} else if reservation.ID != 0 {
+			sheet.Mine = reservation.UserID == loginUserID
+			sheet.Reserved = true
+			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
+		} else if reservation.ID == 0 {
+			event.Remains++
+			event.Sheets[sheet.Rank].Remains++
+		}
+
+		event.Sheets[sheet.Rank].Price = event.Price + sheet.Price
+		event.Total++
+		event.Sheets[sheet.Rank].Total++
+
+		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, &sheet)
+	}
+	
+
+	/*
 	rows, err := db.Query("SELECT * FROM sheets ORDER BY `rank`, num")
 	if err != nil {
 		return nil, err
@@ -263,6 +294,7 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 
 		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, &sheet)
 	}
+	*/
 
 	return &event, nil
 }

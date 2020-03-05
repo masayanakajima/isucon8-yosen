@@ -76,6 +76,7 @@ Vagrant.configure("2") do |config|
 
 
   config.vm.define "webapp" do |webapp|
+    webapp.vm.network "forwarded_port", guest: 22, host: 2221
     webapp.vm.synced_folder "./src/db", "/home/isucon/torb/db", type: "virtualbox", owner:"isucon", group:"isucon"
     webapp.vm.synced_folder "./src/src", "/home/isucon/torb/webapp/go/src", type: "virtualbox", owner:"isucon", group:"isucon"
     webapp.vm.provision "shell", inline: <<-SHELL
@@ -100,6 +101,7 @@ EOF
   end
 
   config.vm.define "db" do |db|
+    db.vm.network "forwarded_port", guest: 22, host: 2222
     db.vm.provision "shell", inline: <<-SHELL
       set -e
       yum update -y
