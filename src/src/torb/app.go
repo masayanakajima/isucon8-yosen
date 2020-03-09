@@ -191,7 +191,90 @@ func getEvents(all bool) ([]*Event, error) {
 	}
 	defer tx.Commit()
 
-	rows, err := tx.Query("SELECT * FROM events ORDER BY id ASC")
+	eventRows, err := tx.Query("SELECT * FROM events ORDER BY id ASC")
+	if err != nil {
+		return nil, err
+	}
+	defer eventRows.Close()
+	var eventSum int
+	var events map[int64]*Event = map[int64]*Event{}
+	//var events []*Event
+	for eventRows.Next() {
+		eventSum++
+		var event Event
+		if err := eventRows.Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
+			return nil, err
+		}
+		if !all && !event.PublicFg {
+			continue
+		}
+
+		event.Sheets = map[string]*Sheets{
+			"S": &Sheets{},
+			"A": &Sheets{},
+			"B": &Sheets{},
+			"C": &Sheets{},
+		}
+		events[event.ID] = &event
+		//events = append(events,&event)
+	}
+	
+	rows, err := tx.Query("select e.id, ifnull(r.id,0) as rid, ifnull(r.user_id,0) as user_id, r.reserved_at, s.id, s.rank, s.num, s.price from events e cross join sheets s left join reservations r on r.event_id = e.id and r.sheet_id = s.id and r.canceled_at is null order by e.id asc")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var event_id int64
+		var sheet Sheet
+		var reservation Reservation
+		
+		err := rows.Scan(&event_id, &reservation.ID, &reservation.UserID, &reservation.ReservedAt, &sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price)
+		
+		_,ok := events[event_id]
+
+		if !ok {
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		} else if reservation.ID != 0 {
+			sheet.Mine = reservation.UserID == -1
+			sheet.Reserved = true
+			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
+		} else if reservation.ID == 0 {
+			events[event_id].Remains++
+			events[event_id].Sheets[sheet.Rank].Remains++
+		}
+		
+		events[event_id].Sheets[sheet.Rank].Price = events[event_id].Price + sheet.Price
+		events[event_id].Total++
+		events[event_id].Sheets[sheet.Rank].Total++
+
+		events[event_id].Sheets[sheet.Rank].Detail = append(events[event_id].Sheets[sheet.Rank].Detail, &sheet)
+		
+	}
+	
+	var eventsArray []*Event
+	for i, _ := range events {
+		for k := range events[i].Sheets {
+			events[i].Sheets[k].Detail = nil
+		}
+		//eventsArray = append(eventsArray,events[i])
+	}
+	
+	for i:=1;i<=eventSum;i++ {
+		_,ok := events[int64(i)]
+		if !ok {
+			continue
+		}
+		eventsArray = append(eventsArray,events[int64(i)])
+	}
+	
+	/*
+	rows, err := tx.Query("SELECT * FROM events , (select ifnull(r.id,0) as id, ifnull(r.user_id,0) as user_id, r.reserved_at, s.id, s.rank, s.num, s.price from reservations r right outer join sheets s on r.sheet_id = s.id and r.canceled_at is null order by s.rank,s.num) ORDER BY id ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +301,9 @@ func getEvents(all bool) ([]*Event, error) {
 		}
 		events[i] = event
 	}
-	return events, nil
+	*/
+
+	return eventsArray, nil
 }
 
 func getEvent(eventID, loginUserID int64) (*Event, error) {
@@ -238,7 +323,7 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 		return nil, err
 	}
 	defer rows.Close()
-
+	
 	for rows.Next(){
 		var sheet Sheet
 		var reservation Reservation
