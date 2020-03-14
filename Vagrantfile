@@ -101,7 +101,7 @@ EOF
   end
 
   config.vm.define "db" do |db|
-    db.vm.network "forwarded_port", guest: 22, host: 2222
+    db.vm.network "forwarded_port", guest: 22, host: 2220
     db.vm.provision "shell", inline: <<-SHELL
       set -e
       yum update -y
